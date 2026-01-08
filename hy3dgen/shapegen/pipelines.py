@@ -488,8 +488,18 @@ class Hunyuan3DDiTPipeline:
         return latents
 
     def prepare_image(self, image) -> dict:
-        if isinstance(image, str) and not os.path.exists(image):
-            raise FileNotFoundError(f"Couldn't find image at path {image}")
+        if isinstance(image, str):
+            # Restrict string-based image paths to a safe root directory.
+            # Default to the current working directory unless overridden by env.
+            base_path = os.path.abspath(os.environ.get("HY3DGEN_IMAGE_ROOT", os.getcwd()))
+            normalized_path = os.path.abspath(os.path.normpath(image))
+            # Ensure the resolved path is within the allowed base_path.
+            if os.path.commonpath([base_path, normalized_path]) != base_path:
+                raise ValueError(f"Access to image path outside of allowed root is not permitted: {image}")
+            if not os.path.exists(normalized_path):
+                raise FileNotFoundError(f"Couldn't find image at path {image}")
+            # Use the normalized safe path from here on.
+            image = normalized_path
 
         if not isinstance(image, list):
             image = [image]
